@@ -2,4 +2,4 @@
 
 it's a game
 
-![preview](preview.png)
+![preview](preview.gif)
