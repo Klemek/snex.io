@@ -20,25 +20,25 @@ function ellipse(cx, cy, rx, ry) {
 }
 
 function drawPlayer(ratio, p) {
-  ctx.fillStyle = p.color;
+  ctx.fillStyle = p.alive ? p.color : '#757575';
   ctx.fillText(p.name, p.pos.x, p.pos.y - ratio * 10);
-  ellipse(p.pos.x, p.pos.y, ratio * 3, ratio * 3);
-  if(p.starting > 0)
-    return;
-  if (!history[p.name])
-    history[p.name] = {
-      i0: 0,
-      list: new Array(hsize)
-    };
-  else
-    history[p.name].i0 = (history[p.name].i0 + 1) % hsize;
-  history[p.name].list[history[p.name].i0] = p.pos;
-}
+  if (p.alive) {
+    ellipse(p.pos.x, p.pos.y, ratio * 3, ratio * 3);
+    if (p.starting > 0)
+      return;
+    if (!history[p.name])
+      history[p.name] = {
+        i0: 0,
+        list: new Array(hsize)
+      };
+    else
+      history[p.name].i0 = (history[p.name].i0 + 1) % hsize;
+    history[p.name].list[history[p.name].i0] = p.pos;
+  }
 
-function drawHistory(p) {
   if (history[p.name]) {
     const h = history[p.name];
-    ctx.strokeStyle = p.color;
+    ctx.strokeStyle = p.alive ? p.color : '#757575';
     ctx.beginPath();
     if(!h.list[h.i0])
       return;
@@ -63,6 +63,7 @@ function drawHistory(p) {
     }
     ctx.stroke();
   }
+
 }
 
 function drawGame() {
@@ -86,11 +87,9 @@ function drawGame() {
   const names = Object.keys(players);
   names.forEach(function (name) {
     const p = players[name];
-    if(p.alive)
-      drawPlayer(ratio, players[name]);
+    drawPlayer(ratio, players[name]);
     if (name === current.name)
       current = players[name];
-    drawHistory(players[name]);
   });
 
   requestAnimationFrame(drawGame);
