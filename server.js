@@ -3,8 +3,11 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const convert = require('color-convert');
 
-app.get('/', function (req, res) {
-  res.sendFile(__dirname + '/client.html');
+app.get('*', function (req, res) {
+  if(req.originalUrl === '/')
+    res.sendFile(`${__dirname}/client/index.html`);
+  else
+    res.sendFile(`${__dirname}/client${req.originalUrl}`);
 });
 
 function randomColor() {
