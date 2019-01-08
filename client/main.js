@@ -4,7 +4,7 @@ const ctx = canvas.getContext('2d');
 let hsize = 300;
 let current;
 let players;
-
+let room;
 let history = {};
 
 function ellipse(cx, cy, rx, ry) {
@@ -70,13 +70,23 @@ function drawGame() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const ratio = canvas.height / window.innerHeight;
 
-  ctx.font = `bold ${ratio * 120}px Roboto`;
-  ctx.textAlign = 'center';
+  const writeTitleText = function (txt, x, y) {
+    ctx.font = `bold 120px Roboto`;
+    ctx.textAlign = 'center';
 
-  ctx.fillStyle = '#4b4b4b';
-  ctx.fillText('snex.io', canvas.width / 2 - ratio * 3, canvas.height / 2 + ratio * 37);
-  ctx.fillStyle = '#545454';
-  ctx.fillText('snex.io', canvas.width / 2, canvas.height / 2 + ratio * 40);
+    const lines = txt.split('\n');
+
+    lines.forEach(function (line, i) {
+      ctx.fillStyle = '#4b4b4b';
+      ctx.fillText(line, x - 3, y + 37 - (120 * lines.length) / 2 + 120 * i);
+      ctx.fillStyle = '#545454';
+      ctx.fillText(line, x, y + 40 - (120 * lines.length) / 2 + 120 * i);
+    });
+
+
+  };
+
+  writeTitleText(`snex.io\n#${room}`, canvas.width / 2, canvas.height / 2);
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -101,9 +111,11 @@ const socket = io({
 });
 socket.on('connect', function () {
   console.log('connected');
-  $(window).focus(function () {
-    socket.emit('history', current);
-  });
+  if (window.location.hash) {
+    socket.emit('room', window.location.hash.slice(1));
+  } else {
+    socket.emit('room', undefined);
+  }
 });
 socket.on('disconnect', function () {
   console.log('disconnected');
@@ -114,7 +126,12 @@ socket.on('info', function (res) {
   history = res.history;
   hsize = res.hsize;
   players = res.players;
-  drawGame()
+  room = res.room;
+  window.location.hash = '#' + room;
+  drawGame();
+  $(window).focus(function () {
+    socket.emit('history', current);
+  });
 });
 
 socket.on('history', function (h) {
