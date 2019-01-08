@@ -135,7 +135,7 @@ setInterval(function () {
               let lastpoint = h2.list[h2.i0];
               if (!lastpoint)
                 return;
-              for (let di = 1; di < HSIZE; di++) {
+              for (let di = 1; di < HSIZE - 1; di++) {
                 const point = h2.list[(h2.i0 - di + HSIZE) % HSIZE];
                 if (point !== undefined) {
                   if (Math.abs(lastpoint.x - point.x) < 1600 * .9 && Math.abs(lastpoint.y - point.y) < 900 * .9) {
@@ -169,6 +169,12 @@ setInterval(function () {
       io.to(rname).emit('lock', true);
     }
     io.to(rname).emit('players', room.players);
+
+    room.historyTimer -= 20;
+    if (room.historyTimer <= 0) {
+      io.to(rname).emit('history', room.history);
+      room.historyTimer += 1000;
+    }
   });
   updateCount++;
 }, 20);
@@ -199,7 +205,8 @@ io.on('connection', function (socket) {
       rooms[socket.room] = {
         waiting: 0,
         players: {},
-        history: {}
+        history: {},
+        historyTimer: 0
       }
     }
 

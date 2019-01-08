@@ -22,29 +22,50 @@ function ellipse(cx, cy, rx, ry) {
   ctx.fill();
 }
 
-function drawPlayer(ratio, p) {
-  ctx.fillStyle = p.alive ? p.color : '#757575';
-  ctx.fillText(p.name, p.pos.x, p.pos.y - ratio * 10);
-  if (p.alive) {
-    ellipse(p.pos.x, p.pos.y, ratio * 3, ratio * 3);
-    if (p.starting > 0)
-      return;
+function clone(a) {
+  return {x: parseFloat(a.x), y: parseFloat(a.y)};
+}
 
-    if (!lock) {
-      if (!history[p.name])
+setInterval(function () {
+  //main loop
+  Object.keys(players).forEach(function (name) {
+    const p = players[name];
+    if (p.alive) {
+      if (p.starting <= 0 && !lock) {
+        if (!history[p.name])
+          history[p.name] = {
+            i0: 0,
+            list: new Array(hsize)
+          };
+        else
+          history[p.name].i0 = (history[p.name].i0 + 1) % hsize;
+        history[p.name].list[history[p.name].i0] = clone(p.pos);
+      } else {
         history[p.name] = {
           i0: 0,
           list: new Array(hsize)
         };
-      else
-        history[p.name].i0 = (history[p.name].i0 + 1) % hsize;
-      history[p.name].list[history[p.name].i0] = p.pos;
+        history[p.name].list[0] = clone(p.pos);
+      }
     }
-  }
+  });
+
+}, 20);
+
+function drawPlayer(ratio, p) {
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3;
+
+  ctx.fillStyle = p.alive ? p.color : '#757575';
+  ctx.fillText(p.name, p.pos.x, p.pos.y - ratio * 10);
+  if (p.alive)
+    ellipse(p.pos.x, p.pos.y, ratio * 3, ratio * 3);
 
   if (history[p.name]) {
     const h = history[p.name];
     ctx.strokeStyle = p.alive ? p.color : '#757575';
+    console.log('h', h.list.length);
     ctx.beginPath();
     if (!h.list[h.i0])
       return;
@@ -93,10 +114,6 @@ function drawGame() {
   ctx.textAlign = 'left';
   writeText(leaderboard, 30, canvas.width / 30, canvas.height / 15, 'normal');
 
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = 3;
-
   ctx.textAlign = 'left';
   ctx.font = `normal ${ratio * 15}px Roboto`;
   const names = Object.keys(players);
@@ -139,7 +156,6 @@ socket.on('disconnect', function () {
 socket.on('info', function (res) {
   current = res.self;
   history = res.history;
-  hsize = res.hsize;
   players = res.players;
   room = res.room;
   window.location.hash = '#' + room;
