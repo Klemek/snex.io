@@ -101,6 +101,9 @@ const socket = io({
 });
 socket.on('connect', function () {
   console.log('connected');
+  $(window).focus(function () {
+    socket.emit('history', current);
+  });
 });
 socket.on('disconnect', function () {
   console.log('disconnected');
@@ -112,6 +115,10 @@ socket.on('info', function (res) {
   hsize = res.hsize;
   players = res.players;
   drawGame()
+});
+
+socket.on('history', function (h) {
+  history = h;
 });
 
 socket.on('players', function (p) {

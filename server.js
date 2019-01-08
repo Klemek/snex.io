@@ -160,6 +160,10 @@ io.on('connection', function (socket) {
     hsize:HSIZE
   });
 
+  socket.on('history', function () {
+    socket.emit('history', history);
+  });
+
   socket.on('disconnect', function () {
     delete players[socket.name];
     delete history[socket.name];
