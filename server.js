@@ -55,9 +55,44 @@ let playerCount = 0;
 
 setInterval(function () {
   //main loop
-  Object.keys(rooms).forEach(function (room) {
-    Object.keys(rooms[room].players).forEach(function (name) {
-      const p = rooms[room].players[name];
+  Object.keys(rooms).forEach(function (rname) {
+    const room = rooms[rname];
+    const pl = Object.keys(room.players);
+
+    if (room.waiting > 0) {
+      room.waiting -= 20;
+      if (room.waiting <= 0) { //restart
+        process.stdout.write(`\rroom #${rname} > restarting game                            \n`);
+        room.history = {};
+        pl.forEach(function (name) {
+          const p = room.players[name];
+          room.players[name] = {
+            pos: {
+              x: randInt(100, MAXX - 100),
+              y: randInt(100, MAXY - 100)
+            },
+            angle: Math.random() * Math.PI,
+            angleSpd: 0,
+            color: p.color,
+            name: p.name,
+            alive: true,
+            starting: 2000,
+            score: p.score
+          };
+          room.history[name] = {
+            i0: -1,
+            list: new Array(HSIZE)
+          }
+        });
+        io.to(rname).emit('players', room.players);
+        io.to(rname).emit('history', room.history);
+        io.to(rname).emit('lock', false);
+      }
+      return;
+    }
+
+    pl.forEach(function (name) {
+      const p = room.players[name];
       if (p.alive) {
         const lastpos = clone(p.pos);
         p.pos.x += SPD * Math.cos(p.angle);
@@ -82,7 +117,7 @@ setInterval(function () {
         }
 
         if (p.starting <= 0) {
-          const h = rooms[room].history[name];
+          const h = room.history[name];
           h.i0 = (h.i0 + 1) % HSIZE;
           h.list[h.i0] = clone(p.pos);
         }
@@ -94,9 +129,9 @@ setInterval(function () {
           if (ds >= SPD * 1.1)
             process.stdout.write(`\r${name} moved too quickly : ${ds} [${lastpos.x},${lastpos.y}]->[${p.pos.x},${p.pos.y}]\n`);
 
-          Object.keys(rooms[room].history).forEach(function (name2) {
+          Object.keys(room.history).forEach(function (name2) {
             if (p.alive && name !== name2) {
-              const h2 = rooms[room].history[name2];
+              const h2 = room.history[name2];
               let lastpoint = h2.list[h2.i0];
               if (!lastpoint)
                 return;
@@ -106,7 +141,7 @@ setInterval(function () {
                   if (Math.abs(lastpoint.x - point.x) < 1600 * .9 && Math.abs(lastpoint.y - point.y) < 900 * .9) {
                     intersectCount++;
                     if (intersects(lastpos, p.pos, lastpoint, point)) {
-                      process.stdout.write(`\r${name} collided with ${name2}                            \n`);
+                      process.stdout.write(`\rroom #${rname} > ${name} collided with ${name2}                            \n`);
                       p.alive = false;
                       break;
                     }
@@ -125,7 +160,15 @@ setInterval(function () {
 
       }
     });
-    io.to(room).emit('players', rooms[room].players);
+    const palive = pl.filter(p => room.players[p].alive);
+
+    if (pl.length > 1 && palive.length === 1) { //end of game
+      room.players[palive[0]].score++;
+      room.waiting = 3000;
+      process.stdout.write(`\rroom #${rname} > ${palive[0]} won                            \n`);
+      io.to(rname).emit('lock', true);
+    }
+    io.to(rname).emit('players', room.players);
   });
   updateCount++;
 }, 20);
@@ -154,6 +197,7 @@ io.on('connection', function (socket) {
 
     if (!rooms[socket.room]) {
       rooms[socket.room] = {
+        waiting: 0,
         players: {},
         history: {}
       }
@@ -169,7 +213,8 @@ io.on('connection', function (socket) {
       color: randomColor(),
       name: socket.name,
       alive: true,
-      starting: 2000
+      starting: 2000,
+      score: 0
     };
     rooms[socket.room].history[socket.name] = {
       i0: -1,
@@ -215,6 +260,8 @@ io.on('connection', function (socket) {
     }
     if (!p.alive)
       return;
+    if (newp.color === 'new')
+      rooms[socket.room].players[newp.name].color = randomColor();
     if (newp.angleSpd > 0)
       rooms[socket.room].players[newp.name].angleSpd = MAX_ANGLE_SPEED;
     else if (newp.angleSpd < 0)

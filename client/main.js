@@ -5,6 +5,9 @@ let hsize = 300;
 let current;
 let players;
 let room;
+let lastScores;
+let leaderboard;
+let lock;
 let history = {};
 
 function ellipse(cx, cy, rx, ry) {
@@ -26,14 +29,17 @@ function drawPlayer(ratio, p) {
     ellipse(p.pos.x, p.pos.y, ratio * 3, ratio * 3);
     if (p.starting > 0)
       return;
-    if (!history[p.name])
-      history[p.name] = {
-        i0: 0,
-        list: new Array(hsize)
-      };
-    else
-      history[p.name].i0 = (history[p.name].i0 + 1) % hsize;
-    history[p.name].list[history[p.name].i0] = p.pos;
+
+    if (!lock) {
+      if (!history[p.name])
+        history[p.name] = {
+          i0: 0,
+          list: new Array(hsize)
+        };
+      else
+        history[p.name].i0 = (history[p.name].i0 + 1) % hsize;
+      history[p.name].list[history[p.name].i0] = p.pos;
+    }
   }
 
   if (history[p.name]) {
@@ -70,30 +76,29 @@ function drawGame() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const ratio = canvas.height / window.innerHeight;
 
-  const writeTitleText = function (txt, x, y) {
-    ctx.font = `bold 120px Roboto`;
-    ctx.textAlign = 'center';
-
+  const writeText = function (txt, size, x, y, font) {
+    ctx.font = `${font} ${size}px Roboto`;
     const lines = txt.split('\n');
-
     lines.forEach(function (line, i) {
       ctx.fillStyle = '#4b4b4b';
-      ctx.fillText(line, x - 3, y + 37 - (120 * lines.length) / 2 + 120 * i);
+      ctx.fillText(line, x - size / 40, y + size / 2 - (size * lines.length) / 2 + size * i - size / 40);
       ctx.fillStyle = '#545454';
-      ctx.fillText(line, x, y + 40 - (120 * lines.length) / 2 + 120 * i);
+      ctx.fillText(line, x, y + size / 2 - (size * lines.length) / 2 + size * i);
     });
-
-
   };
 
-  writeTitleText(`snex.io\n#${room}`, canvas.width / 2, canvas.height / 2);
+  ctx.textAlign = 'center';
+  writeText(`snex.io\n#${room}`, 120, canvas.width / 2, canvas.height / 2, 'bold');
+
+  ctx.textAlign = 'left';
+  writeText(leaderboard, 30, canvas.width / 30, canvas.height / 15, 'normal');
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.lineWidth = 3;
 
   ctx.textAlign = 'left';
-  ctx.font = `normal ${ratio * 10}px Roboto`;
+  ctx.font = `normal ${ratio * 15}px Roboto`;
   const names = Object.keys(players);
   names.forEach(function (name) {
     drawPlayer(ratio, players[name]);
@@ -102,6 +107,16 @@ function drawGame() {
   });
 
   requestAnimationFrame(drawGame);
+}
+
+function updateLeaderboard() {
+  const pl = Object.keys(players);
+  const scores = pl.map(p => `${players[p].score} - ${p}`).join('\n');
+  if (!lastScores || scores !== lastScores) {
+    lastScores = scores;
+    pl.sort((p1, p2) => players[p2].score - players[p1].score);
+    leaderboard = pl.map(p => `${players[p].score} - ${p}` + (p === current.name ? ' *' : '')).join('\n');
+  }
 }
 
 const socket = io({
@@ -128,6 +143,7 @@ socket.on('info', function (res) {
   players = res.players;
   room = res.room;
   window.location.hash = '#' + room;
+  updateLeaderboard();
   drawGame();
   $(window).focus(function () {
     socket.emit('history', current);
@@ -138,8 +154,13 @@ socket.on('history', function (h) {
   history = h;
 });
 
+socket.on('lock', function (l) {
+  lock = l;
+});
+
 socket.on('players', function (p) {
   players = p;
+  updateLeaderboard();
 });
 
 const keys = {};
@@ -167,6 +188,10 @@ $(document).on('keydown', function (e) {
 
 $(document).on('keyup', function (e) {
   switch (e.keyCode) {
+    case 32://space;
+      current.color = 'new';
+      socket.emit('update', current);
+      return;
     case 37://left;
       if (keys[39])
         changeAngle(1);
