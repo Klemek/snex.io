@@ -30,8 +30,8 @@ setInterval(function () {
   //main loop
   Object.keys(players).forEach(function (name) {
     const p = players[name];
-    if (p.alive) {
-      if (p.starting <= 0 && !lock) {
+    if (p.alive && p.starting <= 0) {
+      if (!lock) {
         if (!history[p.name])
           history[p.name] = {
             i0: 0,
@@ -40,12 +40,6 @@ setInterval(function () {
         else
           history[p.name].i0 = (history[p.name].i0 + 1) % hsize;
         history[p.name].list[history[p.name].i0] = clone(p.pos);
-      } else {
-        history[p.name] = {
-          i0: 0,
-          list: new Array(hsize)
-        };
-        history[p.name].list[0] = clone(p.pos);
       }
     }
   });
