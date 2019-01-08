@@ -40,13 +40,13 @@ function drawPlayer(ratio, p) {
     const h = history[p.name];
     ctx.strokeStyle = p.alive ? p.color : '#757575';
     ctx.beginPath();
-    if(!h.list[h.i0])
+    if (!h.list[h.i0])
       return;
     ctx.moveTo(h.list[h.i0].x, h.list[h.i0].y);
     let last = h.list[h.i0];
     for (let di = 1; di < hsize; di++) {
       const point = h.list[(h.i0 - di + hsize) % hsize];
-      if (point){
+      if (point) {
         if (Math.abs(last.x - point.x) >= 1600 * .9) {
           ctx.stroke();
           ctx.moveTo(point.x, point.y);
@@ -57,7 +57,7 @@ function drawPlayer(ratio, p) {
           ctx.lineTo(point.x, point.y)
         }
         last = point;
-      }else{
+      } else {
         break;
       }
     }
@@ -74,19 +74,18 @@ function drawGame() {
   ctx.textAlign = 'center';
 
   ctx.fillStyle = '#4b4b4b';
-  ctx.fillText('snex.io', canvas.width/2 - ratio * 3, canvas.height/2 + ratio*37);
+  ctx.fillText('snex.io', canvas.width / 2 - ratio * 3, canvas.height / 2 + ratio * 37);
   ctx.fillStyle = '#545454';
-  ctx.fillText('snex.io', canvas.width/2, canvas.height/2 + ratio*40);
+  ctx.fillText('snex.io', canvas.width / 2, canvas.height / 2 + ratio * 40);
 
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   ctx.lineWidth = 3;
 
   ctx.textAlign = 'left';
   ctx.font = `normal ${ratio * 10}px Roboto`;
   const names = Object.keys(players);
   names.forEach(function (name) {
-    const p = players[name];
     drawPlayer(ratio, players[name]);
     if (name === current.name)
       current = players[name];
@@ -107,7 +106,7 @@ socket.on('disconnect', function () {
   console.log('disconnected');
 });
 
-socket.on('info', function(res){
+socket.on('info', function (res) {
   current = res.self;
   history = res.history;
   hsize = res.hsize;
@@ -119,44 +118,43 @@ socket.on('players', function (p) {
   players = p;
 });
 
+const keys = {};
+let currentAngleSpd = 0;
+
+function changeAngle(spd) {
+  if (currentAngleSpd !== spd) {
+    current.angleSpd = spd;
+    currentAngleSpd = spd;
+    socket.emit('update', current);
+  }
+}
+
 $(document).on('keydown', function (e) {
   switch (e.keyCode) {
-    case 32://space;
-      current.color = 'new';
-      socket.emit('update', current);
-      return;
     case 37://left;
-      current.angleSpd = -1;
-      socket.emit('update', current);
-      break;
-    case 38://up;
+      changeAngle(-1);
       break;
     case 39://right;
-      current.angleSpd = 1;
-      socket.emit('update', current);
-      break;
-    case 40://down;
+      changeAngle(1);
       break;
   }
+  keys[e.keyCode] = true;
 });
 
 $(document).on('keyup', function (e) {
   switch (e.keyCode) {
-    case 32://space;
-      current.color = 'new';
-      socket.emit('update', current);
-      return;
     case 37://left;
-      current.angleSpd = 0;
-      socket.emit('update', current);
-      break;
-    case 38://up;
+      if (keys[39])
+        changeAngle(1);
+      else
+        changeAngle(0);
       break;
     case 39://right;
-      current.angleSpd = 0;
-      socket.emit('update', current);
-      break;
-    case 40://down;
+      if (keys[37])
+        changeAngle(-1);
+      else
+        changeAngle(0);
       break;
   }
+  keys[e.keyCode] = false;
 });

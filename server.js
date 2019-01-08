@@ -2,16 +2,19 @@ const app = require('express')();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const convert = require('color-convert');
+const fs = require('fs');
 
 app.get('*', function (req, res) {
   if(req.originalUrl === '/')
     res.sendFile(`${__dirname}/client/index.html`);
-  else
+  else if (fs.existsSync(`${__dirname}/client${req.originalUrl}`))
     res.sendFile(`${__dirname}/client${req.originalUrl}`);
+  else
+    res.status(404).send('file not found');
 });
 
 function randomColor() {
-  return '#' + convert.hsl.hex([randInt(0, 256), randInt(50, 200), 256]);
+  return '#' + convert.hsl.hex([randInt(0, 256), randInt(150, 200), 256]);
 }
 
 function randInt(min, max) {
@@ -102,7 +105,7 @@ setInterval(function () {
                 if(Math.abs(lastpoint.x - point.x) < 1600 * .9 && Math.abs(lastpoint.y - point.y) < 900 * .9){
                   ic++;
                   if (intersects(lastpos, p.pos, lastpoint, point)) {
-                    process.stdout.write(`\r${name} collided with ${name2}\n`);
+                    process.stdout.write(`\r${name} collided with ${name2}                            \n`);
                     p.alive = false;
                     break;
                   }
@@ -126,14 +129,14 @@ setInterval(function () {
 }, 20);
 
 setInterval(function () {
-  process.stdout.write(`\rtick ${20 * upc * 20 / 1000}/20 ms (${ic} intersect/s)`);
+  process.stdout.write(`\rtick ${20 * upc * 20 / 1000}/20 ms (${Object.keys(players).length} connected) (${ic} intersect/s)               `);
   upc = 0;
   ic = 0;
 }, 1000);
 
 io.on('connection', function (socket) {
   socket.name = '#' + ('0000' + randInt(0, 10000)).slice(-4);
-  process.stdout.write(`\r${socket.name} connected\n`);
+  process.stdout.write(`\r${socket.name} connected                            \n`);
   players[socket.name] = {
     pos: {
       x: randInt(100, MAXX - 100),
@@ -160,7 +163,7 @@ io.on('connection', function (socket) {
   socket.on('disconnect', function () {
     delete players[socket.name];
     delete history[socket.name];
-    process.stdout.write(`\r${socket.name} disconnected\n`);
+    process.stdout.write(`\r${socket.name} disconnected                            \n`);
     io.emit('players', players);
   });
   socket.on('update', function (newp) {
@@ -171,8 +174,6 @@ io.on('connection', function (socket) {
     }
     if (!p.alive)
       return;
-    if (newp.color === 'new')
-      players[newp.name].color = randomColor();
     if (newp.angleSpd > 0)
       players[newp.name].angleSpd = MAX_ANGLE_SPEED;
     else if (newp.angleSpd < 0)
