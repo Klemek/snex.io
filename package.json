@@ -4,7 +4,7 @@
   "description": "my first socket.io app",
   "dependencies": {
     "color-convert": "^1.9.3",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "socket.io": "^3.0.0"
   }
 }
